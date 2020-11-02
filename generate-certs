@@ -10,19 +10,20 @@ fi
 export CA_KEY=${CA_KEY-"ca-key.pem"}
 export CA_CERT=${CA_CERT-"ca.pem"}
 export CA_SUBJECT=${CA_SUBJECT:-"test-ca"}
-export CA_EXPIRE=${CA_EXPIRE:-"60"}
+export CA_EXPIRE=${CA_EXPIRE:-"365"}
 
 export SSL_CONFIG=${SSL_CONFIG:-"openssl.cnf"}
 export SSL_KEY=${SSL_KEY:-"key.pem"}
 export SSL_CSR=${SSL_CSR:-"key.csr"}
 export SSL_CERT=${SSL_CERT:-"cert.pem"}
-export SSL_SIZE=${SSL_SIZE:-"2048"}
-export SSL_EXPIRE=${SSL_EXPIRE:-"60"}
+export SSL_SIZE=${SSL_SIZE:-"4096"}
+export SSL_EXPIRE=${SSL_EXPIRE:-"365"}
 
 export SSL_SUBJECT=${SSL_SUBJECT:-"example.com"}
 export SSL_DNS=${SSL_DNS}
 export SSL_IP=${SSL_IP}
 
+export K8S_YAML_FILE=${K8S_YAML_FILE:-"secret.yaml"}
 export K8S_NAME=${K8S_NAME:-"omgwtfssl"}
 export K8S_NAMESPACE=${K8S_NAMESPACE:-"default"}
 export K8S_SAVE_CA_KEY=${K8S_SAVE_CA_KEY}
@@ -37,7 +38,7 @@ echo "
 basicConstraints = critical,CA:TRUE
 subjectKeyIdentifier = hash
 authorityKeyIdentifier = keyid:always,issuer:always
-" >> /etc/ssl/openssl.cnf
+" >> /etc/ssl/${SSL_CONFIG}
 
 [[ -z $SILENT ]] && echo "--> Certificate Authority"
 
@@ -103,7 +104,7 @@ openssl x509 -req -in ${SSL_CSR} -CA ${CA_CERT} -CAkey ${CA_KEY} -CAcreateserial
     -days ${SSL_EXPIRE} -extensions v3_req -extfile ${SSL_CONFIG} > /dev/null || exit 1
 
 # create k8s secret file
-cat << EOM > /certs/secret.yaml
+cat << EOM > /certs/${K8S_YAML_FILE}
 apiVersion: v1
 kind: Secret
 metadata:
@@ -113,21 +114,21 @@ type: kubernetes.io/tls
 data:
 EOM
 if [[ -n $K8S_SAVE_CA_KEY ]]; then
-    echo -n "  ca.key: " >> /certs/secret.yaml
-    cat $CA_KEY | base64 | tr '\n' ',' | sed 's/,//g' >> /certs/secret.yaml
-    echo >> /certs/secret.yaml
+    echo -n "  ca.key: " >> /certs/${K8S_YAML_FILE}
+    cat $CA_KEY | base64 | tr '\n' ',' | sed 's/,//g' >> /certs/${K8S_YAML_FILE}
+    echo >> /certs/${K8S_YAML_FILE}
 fi
 if [[ -n $K8S_SAVE_CA_CRT ]]; then
-    echo -n "  ca.crt: " >> /certs/secret.yaml
-    cat $CA_CERT | base64 | tr '\n' ',' | sed 's/,//g' >> /certs/secret.yaml
-    echo >> /certs/secret.yaml
+    echo -n "  ca.crt: " >> /certs/${K8S_YAML_FILE}
+    cat $CA_CERT | base64 | tr '\n' ',' | sed 's/,//g' >> /certs/${K8S_YAML_FILE}
+    echo >> /certs/${K8S_YAML_FILE}
 fi
-echo -n "  tls.key: " >> /certs/secret.yaml
-cat $SSL_KEY | base64 | tr '\n' ',' | sed 's/,//g' >> /certs/secret.yaml
-echo >> /certs/secret.yaml
-echo -n "  tls.crt: " >> /certs/secret.yaml
-cat $SSL_CERT | base64 | tr '\n' ',' | sed 's/,//g' >> /certs/secret.yaml
-echo >> /certs/secret.yaml
+echo -n "  tls.key: " >> /certs/${K8S_YAML_FILE}
+cat $SSL_KEY | base64 | tr '\n' ',' | sed 's/,//g' >> /certs/${K8S_YAML_FILE}
+echo >> /certs/${K8S_YAML_FILE}
+echo -n "  tls.crt: " >> /certs/${K8S_YAML_FILE}
+cat $SSL_CERT | base64 | tr '\n' ',' | sed 's/,//g' >> /certs/${K8S_YAML_FILE}
+echo >> /certs/${K8S_YAML_FILE}
 
 if [[ -z $SILENT ]]; then
 echo "====> Complete"
@@ -137,7 +138,7 @@ echo
 if [[ ${OUTPUT} == "k8s" ]]; then
   echo "====> Output results as base64 k8s secrets"
   echo "---"
-  cat /certs/secret.yaml
+  cat /certs/${K8S_YAML_FILE}
 
 else
   echo "====> Output results as YAML"
