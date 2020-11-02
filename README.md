@@ -1,6 +1,8 @@
 OMGWTFSSL - Self Signed SSL Certificate Generator
 =================================================
 
+> "We should try to find a replacement for omgwtfssl, which is currently used to generate self-signed certificates. The name is inappropriate and unprofessional."  - [gitlab](https://gitlab.com/gitlab-org/charts/gitlab/issues/584)
+
 About
 -----
 
@@ -199,11 +201,11 @@ Enable SSL in `/etc/nginx/sites-enabled/default`:
 
 ```
 server {
-        listen 443;
+        listen 443 ssl;
         server_name test.example.com;
         root html;
         index index.html index.htm;
-        ssl on;
+
         ssl_certificate /tmp/certs/cert.pem;
         ssl_certificate_key /tmp/certs/key.pem;
         ssl_session_timeout 5m;
