@@ -1,17 +1,21 @@
-TMP_DIR = /tmp/paterit/certs
+# defualt path where cerets will be genterated
+CERT_DIR ?= /tmp/paterit/certs
 RED=\033[0;31m
 NC=\033[0m
 
 FILE_CNT_1 = 13
 FILE_CNT_2 = 6
 
-SSL_SUBJECT = 192.168.100.214.xip.io
-SSL_DNS = 192.168.100.214.xip.io
-SSL_IP = 192.168.100.214
+# local active net interface IP as a default value, run make all -e SSL_IP=you.host.ip to use your SSL_IP value
+LOCAL_HOST_ACTIVE_IP := $(shell ip route get 1 | head -n 1 | cut -d " " -f 7)
+# set SSL_IP only if it is not already set
+SSL_IP ?= $(LOCAL_HOST_ACTIVE_IP)
+SSL_SUBJECT = $(SSL_IP).xip.io
+SSL_DNS = $(SSL_IP).xip.io
 SSL_SIZE=4096
 
 all:
-	mkdir -p $(TMP_DIR)
+	mkdir -p $(CERT_DIR)
 	docker build -t paterit/ssl-server-client .
 	make generate
 	make verify1
@@ -20,7 +24,7 @@ all:
 
 generate:
 	docker run --rm \
-		-v $(TMP_DIR):/certs \
+		-v $(CERT_DIR):/certs \
 		-e SSL_SUBJECT=$(SSL_SUBJECT) \
 		-e SSL_IP=$(SSL_IP)\
 		-e SSL_SIZE=$(SSL_SIZE) \
@@ -33,8 +37,8 @@ generate:
 		paterit/ssl-server-client
 
 	docker run --rm \
-		-v $(TMP_DIR):/certs \
-		-e SSL_SUBJECT="/CN=client" \
+		-v $(CERT_DIR):/certs \
+		-e SSL_SUBJECT="client" \
 		-e SSL_SIZE=$(SSL_SIZE) \
 		-e SILENT=True \
 		-e SSL_KEY=client-key.pem \
@@ -45,24 +49,25 @@ generate:
 		paterit/ssl-server-client
 
 clean:
-	sudo chown $$USER:$$USER $(TMP_DIR)/*
-	cd $(TMP_DIR); \
+	sudo chown $$USER:$$USER $(CERT_DIR)/*
+	cd $(CERT_DIR); \
 		rm *.cnf *.yaml *.csr *.srl
 
 verify1:
-	@ls -1 $(TMP_DIR) | wc -l | grep -q $(FILE_CNT_1) || \
+	@ls -1 $(CERT_DIR) | wc -l | grep -q $(FILE_CNT_1) || \
 		{ echo "${RED}ERROR!${NC} Expected number of files is $(FILE_CNT_1)"; exit 1; }
 
 verify2:
-	@ls -1 $(TMP_DIR) | wc -l | grep -q $(FILE_CNT_2) || \
+	@ls -1 $(CERT_DIR) | wc -l | grep -q $(FILE_CNT_2) || \
 		{ echo "${RED}ERROR!${NC} Expected number of files is $(FILE_CNT_2)"; exit 1; }
 
 rmi:
-	sudo rm -rf $(TMP_DIR)
+	sudo rm -rf $(CERT_DIR)
 	docker rmi paterit/ssl-server-client
 
 push:
 	docker push paterit/ssl-server-client:latest
 
 ls:
-	ls -all $(TMP_DIR)
+	ls -all $(CERT_DIR)
+
