@@ -1,7 +1,12 @@
-.PHONY : all server client verify1 verify2 clean rmi push ls
+.PHONY : all server client verify1 verify2 clean rmi push ls copy-certs copy-client copy-server help
 
 # defualt path where cerets will be genterated
 CERT_DIR ?= /tmp/paterit/certs
+
+SERVER_CERT_DIR ?= /home/dmt/certs
+SERVER_SSH_USER ?= dmt
+CLIENT_CERT_DIR ?= /home/wsemik/workspace/dmt/django-microservice-template/cicd/worker/certs
+
 RED=\033[0;31m
 NC=\033[0m
 
@@ -20,7 +25,9 @@ SSL_SIZE=4096
 all:
 	mkdir -p $(CERT_DIR)
 	docker build -t paterit/ssl-server-client .
+	@echo "Creating certs for $(SSL_IP) ..."
 	make server
+	@echo "Creating certs for client ..."
 	make client
 	make verify1
 	make clean
@@ -67,6 +74,7 @@ verify2:
 	@ls -1 $(CERT_DIR) | wc -l | grep -q $(FILE_CNT_2) || \
 		{ echo "${RED}ERROR!${NC} Expected number of files is $(FILE_CNT_2)"; exit 1; }
 
+## Remove generated certs from $CERT_DIR and remove docker image used to generate certs
 rmi:
 	sudo rm -rf $(CERT_DIR)
 	docker rmi paterit/ssl-server-client
@@ -74,8 +82,23 @@ rmi:
 push:
 	docker push paterit/ssl-server-client:latest
 
+## List files in $CERT_DIR
 ls:
 	ls -all $(CERT_DIR)
+
+## Copy CA and client certs to $CLIENT_CERT_DIR. Rsync CA and server certs over ssh to $SERVER_SSH_USER@$SSL_IP:SERVER_CERT_DIR
+copy-certs:
+	make copy-client
+	make copy-server
+
+copy-client:
+	cd $(CERT_DIR); \
+		rsync -avc ca.pem key.pem cert.pem $(CLIENT_CERT_DIR)
+
+copy-server:
+	cd $(CERT_DIR); \
+		rsync -avz -e "ssh" ca.pem server-key.pem server-cert.pem $(SERVER_SSH_USER)@$(SSL_IP):$(SERVER_CERT_DIR)
+
 
 # Printing nice help when make help is called
 
