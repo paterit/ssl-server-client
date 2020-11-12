@@ -13,15 +13,16 @@ NC=\033[0m
 FILE_CNT_1 = 13
 FILE_CNT_2 = 6
 
-# local active net interface IP as a default value, run make all -e SSL_IP=you.host.ip to use your SSL_IP value
+# local active net interface IP as a default value, run make all -e REMOTE_DOCKER_HOST=you.host.ip to use your REMOTE_DOCKER_HOST value
 LOCAL_HOST_ACTIVE_IP := $(shell ip route get 1 | head -n 1 | cut -d " " -f 7)
-# set SSL_IP only if it is not already set
-SSL_IP ?= $(LOCAL_HOST_ACTIVE_IP)
+
+REMOTE_DOCKER_HOST ?= $(LOCAL_HOST_ACTIVE_IP)
+SSL_IP ?= $(REMOTE_DOCKER_HOST)
 SSL_SUBJECT = $(SSL_IP).xip.io
 SSL_DNS = $(SSL_IP).xip.io
 SSL_SIZE=4096
 
-## Standard run on client machine `make -e SSL_IP=your.docker.host.ip -e CERT_DIR=/path/for/created/certs`
+## Standard run on client machine `make -e REMOTE_DOCKER_HOST=your.docker.host.ip -e CERT_DIR=/path/for/created/certs`
 all:
 	mkdir -p $(CERT_DIR)
 	docker build -t paterit/ssl-server-client .
